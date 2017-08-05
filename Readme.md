@@ -1,6 +1,10 @@
 # DC801_DC25PartyBadge
 Party badge and BLE hardware board
 
+![PARTY BADGE!](badgelife2017-18.jpg)
+
+Photo credits to [Cat Murdock](https://twitter.com/catmurd0ck), thank you!
+
 # Hardware
  - **Rigado BMD-300** Bluetooth low energy based on a Nordic nRF52832
    - 16MHz ARM® Cortex™ M4F CPU, 512kB of flash memory, 64kB RAM
