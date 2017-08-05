@@ -1,7 +1,7 @@
 # DC801_DC25PartyBadge
 Party badge and BLE hardware board
 
-![PARTY BADGE!](badgelife2017-18.jpg)
+![PARTY BADGE!](/badgelife2017-18.jpg)
 
 Photo credits to [Cat Murdock](https://twitter.com/catmurd0ck), thank you!
 
