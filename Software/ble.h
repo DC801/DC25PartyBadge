@@ -18,6 +18,13 @@ typedef struct
     uint16_t   data_len; /**< Length of data. */
 } data_t;
 
+typedef struct{
+	uint16_t appearance;
+	uint16_t manu;
+	uint8_t manu_data[10];
+	char *short_name;
+	char *long_name;
+} ADVERTISEMENT;
 
 void advertising_init(void);
 void advertising_start(void);
@@ -36,16 +43,9 @@ void advertising_setDieRoll(uint8_t die);
 void handle801Badge(unsigned char *data);
 void advertising_setFlag(int flag);
 
-void parseAdvertisementData(uint8_t *data, uint8_t len);
+void parseAdvertisementData(uint8_t *data, uint8_t len, ADVERTISEMENT *adv);
 
 char * getManuNameString(uint16_t group);
-
-typedef struct{
-	uint16_t appearance;
-	uint16_t manu;
-	char *short_name;
-	char *long_name;
-} ADVERTISEMENT;
 
 // Not all of these IDs are registered with the bluetooth standard
 #define MANU_CRYPTO						0x0C97

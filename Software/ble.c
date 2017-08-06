@@ -80,6 +80,8 @@ void scan_start(void){
  */
 void ble_evt_dispatch(ble_evt_t * p_ble_evt){
 
+	static ADVERTISEMENT adv = {0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, NULL, NULL};
+
     ble_conn_state_on_ble_evt(p_ble_evt);
 
     // Did we get an advertising message?
@@ -90,7 +92,7 @@ void ble_evt_dispatch(ble_evt_t * p_ble_evt){
         // Was the advertisement more than 0 bytes long?
     	if(p_ble_evt->evt.gap_evt.params.adv_report.dlen > 0){
 
-//				printf("adv report: ");
+//				printf("adv report: %d bytes: ", p_gap_evt->params.adv_report.dlen);
 //				for(int i = 0; i < p_gap_evt->params.adv_report.dlen; i++){
 //					printf("%02X ", p_gap_evt->params.adv_report.data[i]);
 //				}
@@ -100,10 +102,37 @@ void ble_evt_dispatch(ble_evt_t * p_ble_evt){
 			uint8_t data[BLE_GAP_ADV_MAX_SIZE];
 			memcpy(data, p_gap_evt->params.adv_report.data, BLE_GAP_ADV_MAX_SIZE);
 
-			parseAdvertisementData(data, p_gap_evt->params.adv_report.dlen);
+//			printf("%s\n", p_gap_evt->params.adv_report.scan_rsp ? "Response" : "");
+
+			if(!p_gap_evt->params.adv_report.scan_rsp){
+				// This is not a scan response, so clear the struct
+				memset(&adv, 0, sizeof(adv));
+			}
+
+			parseAdvertisementData(data, p_gap_evt->params.adv_report.dlen, &adv);
+
+
+			// Is this a DC25 badge?
+			if(adv.appearance == APP_APPEARANCE_TYPE_DC25){
+				// Yes
+//				printf("Adding seen type %04X\n", adv.manu);
+				addSeenManufacturer(adv.manu);
+
+				// Is this a dc801 badge?
+				// Appearance should have been set by the time we get here for DC801 badges
+				if(adv.manu == MANU_DC801  && adv.appearance == APP_APPEARANCE_TYPE_DC25 ){
+					// Sweet jesus, it's a 801 badge!
+//					printf("801 handle!\n");
+					handle801Badge(adv.manu_data);
+				}
+
+			}
+
     	}
 
     }
+
+
 }
 
 
@@ -251,9 +280,7 @@ void sys_evt_dispatch(uint32_t sys_evt){
 /**
  * @brief Parse an advertisement packet
  */
-void parseAdvertisementData(uint8_t *data, uint8_t len){
-
-	ADVERTISEMENT adv = {0, 0, NULL, NULL};
+void parseAdvertisementData(uint8_t *data, uint8_t len, ADVERTISEMENT *adv){
 
 	// Parse the data
 	// The data is structured in blocks, each block starts with
@@ -264,6 +291,12 @@ void parseAdvertisementData(uint8_t *data, uint8_t len){
 
 	while(data_left > 0){
 
+//		printf("Block %02X is %d bytes: ", data[loc + 1], data[loc]);
+//		for(int i = 0; i < data[loc]; i++){
+//			printf("%02X ", data[loc + 1 + i]);
+//		}
+//		printf("\n");
+
 		uint8_t block_type = 0;
 		uint8_t block_data[BLE_GAP_ADV_MAX_SIZE];
 		memset(block_data, 0, sizeof(block_data));
@@ -272,6 +305,7 @@ void parseAdvertisementData(uint8_t *data, uint8_t len){
 
 		if(block_size > data_left){
 			// Block is bigger than data left, that's not good
+//			printf("Block %02X of size %d exceeds data left of %d\n", data[loc], block_size, data_left);
 			data_left = 0;
 			break;
 		}
@@ -279,7 +313,7 @@ void parseAdvertisementData(uint8_t *data, uint8_t len){
 		uint8_t j = 0;
 		for(int i = 0; i < block_size; i++){
 			if(i == 0){
-				block_type = data[loc+i];
+				block_type = data[loc];
 			}
 			else{
 				block_data[j++] = data[loc+i];
@@ -290,6 +324,8 @@ void parseAdvertisementData(uint8_t *data, uint8_t len){
 
 		data_left = data_left - block_size - 1;
 
+//		printf("Bytes left: %d\n", data_left);
+
 		// Figure out what to do with the block
 		switch(block_type){
 			case BLOCK_TYPE_APPEARANCE:
@@ -297,61 +333,44 @@ void parseAdvertisementData(uint8_t *data, uint8_t len){
 				uint16_t id;
 				id = ((uint16_t)block_data[1] << 8) | block_data[0];
 				if(id == APP_APPEARANCE_TYPE_DC25){
-					//printf("Hey a DC25 badge\n");
+//					printf("Hey a DC25 badge\n");
 				}
 				else{
-					//printf("Appearance %02X\n", id);
+//					printf("Appearance %02X\n", id);
 				}
-				adv.appearance = id;
+				adv->appearance = id;
 				break;
 			}
 			case BLOCK_TYPE_MANU_INFO:
 			{
 				uint16_t id = ((uint16_t)block_data[1] << 8) | block_data[0];
-				//printf("Manu is %02X - %s\n", id, getManuNameString(id));
-				adv.manu = id;
+//				printf("Manu is %02X\n", id);
+				adv->manu = id;
 
-				// Appearance should have been set by the time we get here for DC801 badges
-				if(adv.manu == MANU_DC801  && adv.appearance == APP_APPEARANCE_TYPE_DC25 ){
-					// Sweet jesus, it's a 801 badge!
-
-					//printf("801 badge, len is %d\n", block_size);
-					// Is the block size right?
-					if(block_size == 13){
-						// Get the data, and parse it
-						uint8_t data[10];
-						memcpy(data, &block_data[2], 10);
-						handle801Badge(data);
-					}
-					else{
-						// Nope. Someone is spoofing. Ignore it.
-					}
+				// Save 10 bytes of the manu data if it is a DC801 badge
+				if(id == MANU_DC801 && block_size == 13){
+					memcpy(adv->manu_data, &block_data[2], 10);
 				}
+
 				break;
 			}
 			case BLOCK_TYPE_LONG_NAME:
 			{
-				//printf("Long name: %s\n", (char *)block_data);
-				adv.long_name = (char *)block_data;
+//				printf("Long name: %s\n", (char *)block_data);
+				adv->long_name = (char *)block_data;
 				break;
 			}
 			case BLOCK_TYPE_SHORT_NAME:
 			{
-				//printf("Short name: %s\n", (char*)block_data);
-				adv.short_name = (char *)block_data;
+//				printf("Short name: %s\n", (char*)block_data);
+				adv->short_name = (char *)block_data;
 				break;
 			}
 		}
 
 	}
 
-	// Do something with the parsed data
-
-	// Is this a DC25 badge?
-	if(adv.appearance == APP_APPEARANCE_TYPE_DC25){
-		// Yes
-		addSeenManufacturer(adv.manu);
-	}
+//	printf("\n");
 
 }
 

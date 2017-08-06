@@ -63,6 +63,6 @@ extern CONFIG_PARAMS configParams;
 #define DEFAULT_USER	"801SHEEP"
 #define DEFAULT_VECTOR	"_Helga_"
 
-#define MASTER_BADGE	true
+#define MASTER_BADGE	false
 
 #endif /* APP_H_ */

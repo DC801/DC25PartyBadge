@@ -712,7 +712,7 @@ void updateGameData(char* vector, uint8_t diceRoll){
  */
 void updateCommandData(uint16_t flags){
 
-	printf("Command data is %02X\n", flags);
+//	printf("Command data is %02X\n", flags);
 
 	if(flags == COMMAND_RESET){
 		// Reset the whole badge
