@@ -279,9 +279,9 @@ flash_softdevice:
 	nrfjprog -f nrf52 --reset
 
 # Flash the program
-flash: $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex
-	@echo Flashing: $<
-	nrfjprog --program $< -f nrf52 --sectorerase
+flash: bmp $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex
+	@echo Flashing: $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex
+	nrfjprog --program $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex -f nrf52 --sectorerase
 	nrfjprog --reset -f nrf52
 	
 flash_user: merge_user
@@ -300,11 +300,11 @@ erase:
 recover:
 	nrfjprog --recover -f nrf52
 	
-merge_user: $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex
+merge_user: bmp $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex
 	@echo Merging output with softdevice $(SOFTDEVICE)
 	mergehex -m $(SOFTDEVICE) $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex -o DC25PartyBadge_merged_user.hex
 	
-merge_master: $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex
+merge_master: bmp $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex
 	@echo Merging output with softdevice $(SOFTDEVICE)
 	mergehex -m $(SOFTDEVICE) $(OUTPUT_DIRECTORY)/DC25PartyBadge.hex -o DC25PartyBadge_merged_master.hex
 	

@@ -288,7 +288,7 @@ void parseAdvertisementData(uint8_t *data, uint8_t len){
 
 		loc = loc + block_size;
 
-		data_left = data_left - block_size;
+		data_left = data_left - block_size - 1;
 
 		// Figure out what to do with the block
 		switch(block_type){
